@@ -30,11 +30,16 @@ def clean(attr):
 async def consumer_handler(websocket, connection):
     try:
         async for message in websocket:
-            print(message)
-            connection.write(drive)
-            connection.write(drive2)
-            connection.write(values)
-            connection.write(values2)
+            try:
+                jmessage = json.loads(message)
+                id = jmessage['id']
+                fields = jmessage['fields']
+                print(id, fields)
+                obj = VESCMessage.msg_type(id)(**fields)
+                connection.write(pyvesc.encode_request(obj))
+            except Exception as e:
+                print(e)
+                print(f"Non valid message: {message}")
         print("CONSUMER DONE")
         raise ConnectionClosedError(None, None)
     except (asyncio.CancelledError, ConnectionClosedError, ConnectionClosedOK):
@@ -47,8 +52,10 @@ async def producer_handler(websocket, connection):
         async for message in ptask:
             fields = message._field_names
             jdata = {field: clean(getattr(message, field)) for field in fields}
-            print(jdata)
-            await websocket.send(json.dumps(jdata))
+            print(int(message.id))
+            mdata = {"id": int(message.id), "fields": jdata}
+            print(mdata)
+            await websocket.send(json.dumps(mdata))
         print("PRODUCER DONE")
         raise ConnectionClosedError(None, None)
     except (asyncio.CancelledError, ConnectionClosedError, ConnectionClosedOK):
