@@ -75,12 +75,7 @@ class Server:
                     id = jmessage['id']
                     fields = jmessage['fields']
                     obj = VESCMessage.msg_type(vc[id].value)(**fields)
-                    try:
-                        encoded = pyvesc.encode(obj)
-                    except:
-                        encoded = pyvesc.encode_request(obj)
-                    self.connection.write(encoded)
-                    self.TARGET = 10000
+                    self.write_both(obj)
                 except KeyError:
                     try:
                         await self.parse_command(websocket, id, fields)
@@ -98,6 +93,7 @@ class Server:
 
     async def producer_handler(self, websocket):
         try:
+            count = 0
             ptask = self.connection.producer()
             async for message in ptask:
                 fields = message._field_names
@@ -112,9 +108,6 @@ class Server:
             raise
 
     async def handler(self, websocket):
-        for con in self.CONNECTIONS:
-                if con.closed:
-                    self.CONNECTIONS.remove(con)
         if len(self.CONNECTIONS) > 0:
             await websocket.send("Only one connection allowed at a time")
             await websocket.close()
@@ -154,6 +147,7 @@ class Server:
             print("Connection closed and flushed")
 
     async def handle_board(self):
+        count = 0
         try:
             print("HANDLE BOARD")
             t0 = time()
@@ -169,7 +163,9 @@ class Server:
                     self.write_both(SetCurrent(0))
                 else:
                     self.write_both(SetRPM(int(self.CURRENT)))
-                self.write_both(GetValues())
+                for con in self.CONNECTIONS:
+                    if con.open:
+                        self.write_both(GetValues())
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
             print("Board Handler Closed")
