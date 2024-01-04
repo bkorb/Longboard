@@ -24,8 +24,8 @@ class Server:
         self.CURRENT = 0
         self.TARGET = 0
         self.VALUE_DATA = GetValues()
-        self.ACC_RPM_PER_SECOND = 1000
-        self.DEC_RPM_PER_SECOND = 3000
+        self.ACC_RPM_PER_SECOND = 5000
+        self.DEC_RPM_PER_SECOND = 15000
 
     def start(self):
         self.loop = asyncio.get_event_loop()
@@ -166,7 +166,7 @@ class Server:
                 for con in self.CONNECTIONS:
                     if con.open:
                         self.write_both(GetValues())
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.01)
         except asyncio.CancelledError:
             print("Board Handler Closed")
         except Exception as e:
