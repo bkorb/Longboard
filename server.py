@@ -20,13 +20,10 @@ def clean(attr):
 class Server:
     def __init__(self):
         self.can_id = 124
-        self.values = pyvesc.encode_request(GetValues)
-        self.values2 = pyvesc.encode_request(GetValues(can_id=self.can_id))
-        self.drive = pyvesc.encode(SetRPM(1000))
-        self.drive2 = pyvesc.encode(SetRPM(1000, can_id=self.can_id))
         self.CONNECTIONS = set()
         self.CURRENT = 0
         self.TARGET = 0
+        self.VALUE_DATA = GetValues()
         self.ACC_RPM_PER_SECOND = 1000
         self.DEC_RPM_PER_SECOND = 3000
 
@@ -106,6 +103,8 @@ class Server:
                 fields = message._field_names
                 jdata = {field: clean(getattr(message, field)) for field in fields}
                 mdata = {"id": vc(int(message.id)).name, "fields": jdata}
+                if mdata["id"] == "COMM_GET_VALUES":
+                    self.VALUE_DATA = message
                 await websocket.send(json.dumps(mdata))
             print("PRODUCER DONE")
             raise ConnectionClosedError(None, None)
