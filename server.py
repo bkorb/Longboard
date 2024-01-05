@@ -151,21 +151,25 @@ class Server:
         try:
             print("HANDLE BOARD")
             t0 = time()
+            q0 = t0
             while True:
                 t1 = time()
                 dt = t1-t0
                 t0 = t1
+                RATE = self.ACC_RPM_PER_SECOND if (abs(self.CURRENT) < abs(self.TARGET)) else self.DEC_RPM_PER_SECOND
                 if self.CURRENT < self.TARGET:
-                    self.CURRENT = min(self.CURRENT + dt*self.ACC_RPM_PER_SECOND, self.TARGET)
+                    self.CURRENT = min(self.CURRENT + dt*RATE, self.TARGET)
                 elif self.CURRENT > self.TARGET:
-                    self.CURRENT = max(self.CURRENT - dt*self.DEC_RPM_PER_SECOND, self.TARGET)
+                    self.CURRENT = max(self.CURRENT - dt*RATE, self.TARGET)
                 if abs(self.CURRENT) < 100:
                     self.write_both(SetCurrent(0))
                 else:
                     self.write_both(SetRPM(int(self.CURRENT)))
                 for con in self.CONNECTIONS:
                     if con.open:
-                        self.write_both(GetValues())
+                        if t1-q0 > 0.1:
+                            self.write_both(GetValues())
+                            q0 = t1
                 await asyncio.sleep(0.01)
         except asyncio.CancelledError:
             print("Board Handler Closed")
