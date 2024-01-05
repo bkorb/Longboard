@@ -55,15 +55,19 @@ class Server:
     def stop_motors(self):
         print("Stopping Motors")
         self.TARGET = 0
-        #self.CURRENT = 0
-        #self.write_both(SetCurrent(0))
+        self.write_both(SetCurrent(0))
 
     async def parse_command(self, websocket, id, fields):
         try:
-            if id == "setTarget":
-                self.TARGET = fields['target']
-            elif id == "getTarget":
-                await websocket.send(json.dumps({'id': id, 'fields': {'target': self.TARGET}}))
+            if id == "SET_TARGET":
+                self.TARGET = fields['rpm']
+            elif id == "GET_TARGET":
+                await websocket.send(json.dumps({'id': id, 'fields': {'rpm': self.TARGET}}))
+            elif id == "SET_SETTINGS":
+                self.ACC_RPM_PER_SECOND = fields['ACC_RPM_PER_SECOND']
+                self.DEC_RPM_PER_SECOND = fields['DEC_RPM_PER_SECOND']
+            elif id == "GET_SETTINGS":
+                await websocket.send(json.dumps({'id': id, 'fields': {'ACC_RPM_PER_SECOND': self.ACC_RPM_PER_SECOND, 'DEC_RPM_PER_SECOND': self.DEC_RPM_PER_SECOND}}))
         except Exception:
             raise
 
@@ -82,9 +86,9 @@ class Server:
                     except KeyError:
                         print(f"Non valid message: {message}")
                     except Exception:
-                        print("Connection Failure")
+                        print(f"Connection Failure {message}")
                 except Exception:
-                    print("Connection Failure")
+                    print(f"Connection Failure {message}")
             print("CONSUMER DONE")
             raise ConnectionClosedError(None, None)
         except (asyncio.CancelledError, ConnectionClosedError, ConnectionClosedOK):
