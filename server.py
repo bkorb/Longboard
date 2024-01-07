@@ -12,10 +12,29 @@ import pyvesc
 import functools
 import json
 
+
 def clean(attr):
     if isinstance(attr, bytes):
         return int.from_bytes(attr, "big")
     return attr
+
+
+SETTINGS_PATH = "/home/bkorb/Longboard/settings.json"
+
+
+def load_settings(settings = {}):
+    try:
+        with open(SETTINGS_PATH, 'r') as openfile:
+            settings.update(json.load(openfile))
+    except FileNotFoundError:
+        pass
+    return settings
+
+
+def save_settings(settings):
+    with open(SETTINGS_PATH, "w") as outfile:
+        json.dump(settings, outfile)
+
 
 class Server:
     def __init__(self):
@@ -24,8 +43,10 @@ class Server:
         self.CURRENT = 0
         self.TARGET = 0
         self.VALUE_DATA = GetValues()
-        self.ACC_RPM_PER_SECOND = 5000
-        self.DEC_RPM_PER_SECOND = 15000
+        self.SETTINGS = load_settings({
+            "Max Acceleration": 5000,
+            "Max Deceleration": 15000,
+        })
 
     def start(self):
         self.loop = asyncio.get_event_loop()
@@ -64,11 +85,11 @@ class Server:
             elif id == "GET_TARGET":
                 await websocket.send(json.dumps({'id': id, 'fields': {'rpm': self.TARGET}}))
             elif id == "SET_SETTINGS":
-                self.ACC_RPM_PER_SECOND = fields['ACC_RPM_PER_SECOND']
-                self.DEC_RPM_PER_SECOND = fields['DEC_RPM_PER_SECOND']
-                await websocket.send(json.dumps({'id': id, 'fields': {'ACC_RPM_PER_SECOND': float(self.ACC_RPM_PER_SECOND), 'DEC_RPM_PER_SECOND': float(self.DEC_RPM_PER_SECOND)}}))
+                self.SETTINGS = fields
+                save_settings(self.SETTINGS)
+                await websocket.send(json.dumps({'id': id, 'fields': self.SETTINGS}))
             elif id == "GET_SETTINGS":
-                await websocket.send(json.dumps({'id': id, 'fields': {'ACC_RPM_PER_SECOND': float(self.ACC_RPM_PER_SECOND), 'DEC_RPM_PER_SECOND': float(self.DEC_RPM_PER_SECOND)}}))
+                await websocket.send(json.dumps({'id': id, 'fields': self.SETTINGS}))
         except Exception:
             raise
 
@@ -98,7 +119,6 @@ class Server:
 
     async def producer_handler(self, websocket):
         try:
-            count = 0
             ptask = self.connection.producer()
             async for message in ptask:
                 fields = message._field_names
@@ -152,7 +172,6 @@ class Server:
             print("Connection closed and flushed")
 
     async def handle_board(self):
-        count = 0
         try:
             print("HANDLE BOARD")
             t0 = time()
@@ -161,7 +180,7 @@ class Server:
                 t1 = time()
                 dt = t1-t0
                 t0 = t1
-                RATE = self.ACC_RPM_PER_SECOND if (abs(self.CURRENT) < abs(self.TARGET)) else self.DEC_RPM_PER_SECOND
+                RATE = self.SETTINGS["Max Acceleration"] if (abs(self.CURRENT) < abs(self.TARGET)) else self.SETTINGS["Max Deceleration"]
                 if self.CURRENT < self.TARGET:
                     self.CURRENT = min(self.CURRENT + dt*RATE, self.TARGET)
                 elif self.CURRENT > self.TARGET:
