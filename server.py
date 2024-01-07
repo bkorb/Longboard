@@ -66,8 +66,9 @@ class Server:
             elif id == "SET_SETTINGS":
                 self.ACC_RPM_PER_SECOND = fields['ACC_RPM_PER_SECOND']
                 self.DEC_RPM_PER_SECOND = fields['DEC_RPM_PER_SECOND']
+                await websocket.send(json.dumps({'id': id, 'fields': {'ACC_RPM_PER_SECOND': float(self.ACC_RPM_PER_SECOND), 'DEC_RPM_PER_SECOND': float(self.DEC_RPM_PER_SECOND)}}))
             elif id == "GET_SETTINGS":
-                await websocket.send(json.dumps({'id': id, 'fields': {'ACC_RPM_PER_SECOND': self.ACC_RPM_PER_SECOND, 'DEC_RPM_PER_SECOND': self.DEC_RPM_PER_SECOND}}))
+                await websocket.send(json.dumps({'id': id, 'fields': {'ACC_RPM_PER_SECOND': float(self.ACC_RPM_PER_SECOND), 'DEC_RPM_PER_SECOND': float(self.DEC_RPM_PER_SECOND)}}))
         except Exception:
             raise
 
